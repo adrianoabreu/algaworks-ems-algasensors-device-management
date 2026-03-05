@@ -53,6 +53,18 @@ public class SensorController {
         return ResponseEntity.noContent().build();
     }
 
+    @PutMapping(value = "/{sensorId}/enable")
+    public ResponseEntity<Void> enable(@PathVariable TSID sensorId) {
+        sensorService.enable(sensorId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping(value = "/{sensorId}/enable")
+    public ResponseEntity<Void> disable(@PathVariable TSID sensorId) {
+        sensorService.disable(sensorId);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public SensorOutput create(@RequestBody SensorInput input){

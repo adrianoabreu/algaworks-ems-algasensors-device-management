@@ -94,4 +94,23 @@ public class SensorService {
                 .build();
     }
 
+    @Transactional
+    public void enable(TSID sensorId) {
+        try {
+            Sensor sensor = sensorRepository.getReferenceById(new SensorId(sensorId));
+            sensor.setEnabled(true);
+            sensorRepository.saveAndFlush(sensor);
+        } catch (EntityNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+        }
+    }
+
+    @Transactional
+    public void disable(TSID sensorId) {
+        Sensor sensor = sensorRepository.findById(new SensorId(sensorId)).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        sensor.setEnabled(false);
+        sensorRepository.saveAndFlush(sensor);
+    }
+
+
 }
