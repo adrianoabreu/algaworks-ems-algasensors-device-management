@@ -1,4 +1,4 @@
-package com.algaworks.algasensors.device.management.api.controller;
+package com.algaworks.algasensors.device.management.domain.services;
 
 import com.algaworks.algasensors.device.management.api.model.SensorInput;
 import com.algaworks.algasensors.device.management.api.model.SensorOutput;
@@ -6,56 +6,39 @@ import com.algaworks.algasensors.device.management.common.IdGeneration;
 import com.algaworks.algasensors.device.management.domain.model.Sensor;
 import com.algaworks.algasensors.device.management.domain.model.SensorId;
 import com.algaworks.algasensors.device.management.domain.repository.SensorRepository;
-import com.algaworks.algasensors.device.management.domain.services.SensorService;
 import io.hypersistence.tsid.TSID;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-//import jakarta.validation.Valid;
 
-@RestController
+@Service
 @Validated
-@RequestMapping("/api/sensors")
 @RequiredArgsConstructor
-public class SensorController {
+public class SensorService {
 
     private final SensorRepository sensorRepository;
-    private final SensorService sensorService;
 
-    @GetMapping
-    public Page<SensorOutput> search(@PageableDefault Pageable pageable){
-        Page<Sensor> sensors = sensorRepository.findAll(pageable);
-        return sensors.map(this::convertToModel);
+    @Transactional(readOnly = true)
+    public Page<SensorOutput> search(Pageable pageable) {
+        return sensorRepository.findAll(pageable).map(this::convertToModel);
     }
 
-    @GetMapping("{sensorId}")
-    public SensorOutput getOne(@PathVariable TSID sensorId) {
+    @Transactional(readOnly = true)
+    public SensorOutput getOne(TSID sensorId) {
         Sensor sensor = sensorRepository.findById(new SensorId(sensorId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         return convertToModel(sensor);
     }
 
-    @PutMapping(value = "/{sensorId}")
-    public ResponseEntity<SensorOutput> update(@PathVariable TSID sensorId, @Validated @RequestBody SensorInput input) {
-        return ResponseEntity.ok(sensorService.update(sensorId,input));
-    }
-
-    @DeleteMapping(value = "/{sensorId}")
-    public ResponseEntity<Void> delete(@PathVariable TSID sensorId) {
-        sensorService.delete(sensorId);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public SensorOutput create(@RequestBody SensorInput input){
+    @Transactional
+    public SensorOutput create(SensorInput input) {
         Sensor sensor = Sensor.builder()
                 .id(new SensorId(IdGeneration.generateTSID()))
                 .name(input.getName())
@@ -66,12 +49,40 @@ public class SensorController {
                 .enabled(false)
                 .build();
 
-        sensor = sensorRepository.saveAndFlush(sensor);
+        sensorRepository.saveAndFlush(sensor);
 
         return convertToModel(sensor);
     }
 
-    private SensorOutput convertToModel(Sensor sensor){
+    @Transactional
+    public SensorOutput update(TSID sensorId, SensorInput input) {
+        try {
+            Sensor sensor = sensorRepository.getReferenceById(new SensorId(sensorId));
+
+            sensor.setName(input.getName());
+            sensor.setIp(input.getIp());
+            sensor.setLocation(input.getLocation());
+            sensor.setProtocol(input.getProtocol());
+            sensor.setModel(input.getModel());
+
+            sensorRepository.saveAndFlush(sensor);
+
+            return convertToModel(sensor);
+        } catch (EntityNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+        }
+    }
+
+    @Transactional(propagation = Propagation.SUPPORTS)
+    public void delete(TSID sensorId) {
+
+        if (!sensorRepository.existsById(new SensorId(sensorId))) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        } else
+            sensorRepository.deleteById(new SensorId(sensorId));
+    }
+
+    private SensorOutput convertToModel(Sensor sensor) {
         return SensorOutput.builder()
                 .id(sensor.getId().getValue())
                 .name(sensor.getName())
