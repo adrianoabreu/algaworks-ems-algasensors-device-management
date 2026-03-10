@@ -1,5 +1,6 @@
 package com.algaworks.algasensors.device.management.api.controller;
 
+import com.algaworks.algasensors.device.management.api.client.SensorMonitoringClient;
 import com.algaworks.algasensors.device.management.api.model.SensorInput;
 import com.algaworks.algasensors.device.management.api.model.SensorOutput;
 import com.algaworks.algasensors.device.management.common.IdGeneration;
@@ -28,6 +29,7 @@ public class SensorController {
 
     private final SensorRepository sensorRepository;
     private final SensorService sensorService;
+    private final SensorMonitoringClient sensorMonitoringClient;
 
     @GetMapping
     public Page<SensorOutput> search(@PageableDefault Pageable pageable){
@@ -48,21 +50,44 @@ public class SensorController {
     }
 
     @DeleteMapping(value = "/{sensorId}")
-    public ResponseEntity<Void> delete(@PathVariable TSID sensorId) {
-        sensorService.delete(sensorId);
-        return ResponseEntity.noContent().build();
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+//    public ResponseEntity<Void> delete(@PathVariable TSID sensorId) {
+    public void delete(@PathVariable TSID sensorId) {
+//        sensorService.delete(sensorId);
+//        return ResponseEntity.noContent().build();
+        Sensor sensor = sensorRepository.findById(new SensorId(sensorId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        sensorRepository.delete(sensor);
+
+        sensorMonitoringClient.disableMonitoring(sensorId);
     }
 
     @PutMapping(value = "/{sensorId}/enable")
-    public ResponseEntity<Void> enable(@PathVariable TSID sensorId) {
-        sensorService.enable(sensorId);
-        return ResponseEntity.noContent().build();
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+//    public ResponseEntity<Void> enable(@PathVariable TSID sensorId) {
+    public void enable(@PathVariable TSID sensorId) {
+//        sensorService.enable(sensorId);
+//        return ResponseEntity.noContent().build();
+        Sensor sensor = sensorRepository.findById(new SensorId(sensorId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        sensor.setEnabled(true);
+        sensorRepository.save(sensor);
+
+        sensorMonitoringClient.enableMonitoring(sensorId);
     }
 
     @DeleteMapping(value = "/{sensorId}/enable")
-    public ResponseEntity<Void> disable(@PathVariable TSID sensorId) {
-        sensorService.disable(sensorId);
-        return ResponseEntity.noContent().build();
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+//    public ResponseEntity<Void> disable(@PathVariable TSID sensorId) {
+    public void disable(@PathVariable TSID sensorId) {
+//        sensorService.disable(sensorId);
+//        return ResponseEntity.noContent().build();
+        Sensor sensor = sensorRepository.findById(new SensorId(sensorId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        sensor.setEnabled(true);
+        sensorRepository.save(sensor);
+
+        sensorMonitoringClient.disableMonitoring(sensorId);
     }
 
     @PostMapping
