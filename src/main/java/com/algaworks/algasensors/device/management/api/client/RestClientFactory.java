@@ -16,6 +16,7 @@ public class RestClientFactory {
     private final RestClient.Builder builder;
 
     public RestClient temperatureMonitoringRestClient() {
+//      return  RestClient.create("http://localhost:8082");  // não carrega os modulos do Jackson
         return builder.baseUrl("http://localhost:8082")
                 .requestFactory(generateClienteHttpRequestFactory())
                 .defaultStatusHandler(HttpStatusCode::isError, (request, response) -> {
